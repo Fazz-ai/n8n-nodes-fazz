@@ -1,0 +1,18 @@
+{
+	"node": "n8n-nodes-fazz.fazzTrigger",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Communication", "Sales"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://github.com/Fazz-ai/n8n-nodes-fazz#credentials"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://github.com/Fazz-ai/n8n-nodes-fazz#readme"
+			}
+		]
+	}
+}
