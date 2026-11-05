@@ -8,7 +8,7 @@ import { idempotencyKey } from '../nodes/Fazz/shared/helpers';
 const node: INode = {
 	id: 'node-1',
 	name: 'Fazz',
-	type: 'n8n-nodes-fazz.fazz',
+	type: '@fazz-ia/n8n-nodes-fazz.fazz',
 	typeVersion: 1,
 	position: [0, 0],
 	parameters: {},

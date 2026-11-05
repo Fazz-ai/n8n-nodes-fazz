@@ -1,5 +1,5 @@
 {
-	"node": "n8n-nodes-fazz.fazz",
+	"node": "@fazz-ia/n8n-nodes-fazz.fazz",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": ["Communication", "Sales"],
