@@ -1,6 +1,6 @@
 {
   "name": "@fazz-ai/n8n-nodes-fazz",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "n8n nodes for Fazz: send WhatsApp templates, text and media, manage contacts, and start workflows from Fazz events.",
   "license": "MIT",
   "homepage": "https://github.com/Fazz-ai/n8n-nodes-fazz#readme",
@@ -12,8 +12,8 @@
     "crm"
   ],
   "author": {
-    "name": "Aguinaldo Tupy",
-    "email": "44652991+aguinaldotupy@users.noreply.github.com"
+    "name": "Fazz",
+    "email": "contato@fazz.ia.br"
   },
   "repository": {
     "type": "git",

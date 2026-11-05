@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.1
+
+- Package author is now Fazz (contato@fazz.ia.br).
+
 ## 0.1.0
 
 - Fazz node: send templates, text and media; create, update, find and list contacts; add notes.
