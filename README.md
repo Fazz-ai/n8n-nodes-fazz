@@ -1,4 +1,4 @@
-# @fazz-ia/n8n-nodes-fazz
+# @fazz-ai/n8n-nodes-fazz
 
 The official [n8n](https://n8n.io/) nodes for [Fazz](https://fazz.ia.br), the WhatsApp CRM. Send approved WhatsApp templates, text and media, keep contacts up to date, and start workflows when something happens in Fazz: a message received, a contact created, a deal won.
 
@@ -12,7 +12,7 @@ The official [n8n](https://n8n.io/) nodes for [Fazz](https://fazz.ia.br), the Wh
 
 ## Installation
 
-In n8n, open **Settings › Community Nodes**, select **Install**, and enter `@fazz-ia/n8n-nodes-fazz`. See the [community nodes installation guide](https://docs.n8n.io/integrations/community-nodes/installation/) for self-hosted setups.
+In n8n, open **Settings › Community Nodes**, select **Install**, and enter `@fazz-ai/n8n-nodes-fazz`. See the [community nodes installation guide](https://docs.n8n.io/integrations/community-nodes/installation/) for self-hosted setups.
 
 ## Credentials
 
