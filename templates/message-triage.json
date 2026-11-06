@@ -1,0 +1,551 @@
+{
+  "name": "Triage incoming WhatsApp messages in Fazz with AI and alert the team about complaints",
+  "nodes": [
+    {
+      "parameters": {
+        "events": [
+          "message.received"
+        ]
+      },
+      "id": "6943decc-131b-4ef6-a101-abec1a080b5c",
+      "name": "New WhatsApp message",
+      "type": "@fazz-ai/n8n-nodes-fazz.fazzTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        300
+      ],
+      "credentials": {
+        "fazzApi": {
+          "id": "",
+          "name": "Fazz account"
+        }
+      },
+      "webhookId": "f4e81ff6-2699-4bfc-aab9-0f53cc48f270"
+    },
+    {
+      "parameters": {
+        "operation": "removeItemsSeenInPreviousExecutions",
+        "dedupeValue": "={{ $json.id }}",
+        "options": {}
+      },
+      "id": "b6dca437-3664-4148-b919-0c4c6750db10",
+      "name": "Ignore repeated deliveries",
+      "type": "n8n-nodes-base.removeDuplicates",
+      "typeVersion": 2,
+      "position": [
+        220,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b16414d2-3214-4361-9654-1d56c6eb58e2",
+              "name": "alertEmail",
+              "value": "team@example.com",
+              "type": "string"
+            },
+            {
+              "id": "049c4cc5-f07b-48ba-9a01-d1fa8be2aca4",
+              "name": "fromEmail",
+              "value": "n8n@example.com",
+              "type": "string"
+            },
+            {
+              "id": "c4eae395-ec64-4ea9-9c28-24b5588b5cb3",
+              "name": "messageText",
+              "value": "={{ ($json.data.text || $json.data.caption || '').trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "1b01bc62-a68c-451d-8582-d798d926cd19",
+              "name": "contactId",
+              "value": "={{ $json.data.contact?.id }}",
+              "type": "number"
+            },
+            {
+              "id": "e203d40e-da59-4c76-89e2-3e096761cb14",
+              "name": "contactName",
+              "value": "={{ $json.data.contact?.name || 'Unknown contact' }}",
+              "type": "string"
+            },
+            {
+              "id": "5630bc1c-84ed-4f63-866f-4abe8f4ab7d7",
+              "name": "contactPhone",
+              "value": "={{ $json.data.contact?.phone || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "5ddffc25-ae28-4e48-9c8f-67fc3fbcc649",
+              "name": "whatsappNumber",
+              "value": "={{ $json.data.whatsapp_number?.name || '' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "bf4ac737-5d69-4f94-815b-59e30c19656d",
+      "name": "Triage settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        480,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "b147c2a6-7586-476e-a1be-454d5d5a2021",
+              "leftValue": "={{ $json.messageText }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "a4568b05-29ed-4101-a32b-0258bd4c99cf",
+              "leftValue": "={{ $json.contactId }}",
+              "rightValue": "",
+              "operator": {
+                "type": "number",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "7cad4783-13db-43ef-a750-32905c69c8a0",
+      "name": "Has text?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        700,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "inputText": "={{ $json.messageText }}",
+        "categories": {
+          "categories": [
+            {
+              "category": "Sales",
+              "description": "The customer wants to buy: asks for a price, a quote, availability, delivery time or how to order."
+            },
+            {
+              "category": "Support",
+              "description": "The customer needs help with something they already bought or an order in progress: a question, a problem, a document or a status update."
+            },
+            {
+              "category": "Complaint",
+              "description": "The customer is unhappy: complains, reports poor service or a defect, asks for a refund or to cancel, or threatens to leave."
+            }
+          ]
+        },
+        "options": {
+          "fallback": "other",
+          "systemPromptTemplate": "Classify a WhatsApp message a customer sent to a company. Messages can be in any language. Pick the single category that fits best; greetings, thanks and short replies go to other."
+        }
+      },
+      "id": "b30601e8-0040-46d2-8ad5-5838eece67d1",
+      "name": "Classify the message",
+      "type": "@n8n/n8n-nodes-langchain.textClassifier",
+      "typeVersion": 1.1,
+      "position": [
+        940,
+        300
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-5-mini",
+          "cachedResultName": "gpt-5-mini"
+        },
+        "options": {}
+      },
+      "id": "35babf97-adde-4360-8839-7aabecfec466",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        960,
+        520
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "contact",
+        "operation": "addNote",
+        "contactId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Triage settings').item.json.contactId }}"
+        },
+        "note": "=AI triage: buying signal on WhatsApp. \"{{ $('Triage settings').item.json.messageText }}\""
+      },
+      "id": "9628081c-3346-4d88-94d5-46ae41740b9d",
+      "name": "Note: buying signal",
+      "type": "@fazz-ai/n8n-nodes-fazz.fazz",
+      "typeVersion": 1,
+      "position": [
+        1300,
+        20
+      ],
+      "credentials": {
+        "fazzApi": {
+          "id": "",
+          "name": "Fazz account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "contact",
+        "operation": "addNote",
+        "contactId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Triage settings').item.json.contactId }}"
+        },
+        "note": "=AI triage: support request on WhatsApp. \"{{ $('Triage settings').item.json.messageText }}\""
+      },
+      "id": "3b3c26af-d2f1-45bd-8547-9254adf17154",
+      "name": "Note: support request",
+      "type": "@fazz-ai/n8n-nodes-fazz.fazz",
+      "typeVersion": 1,
+      "position": [
+        1300,
+        200
+      ],
+      "credentials": {
+        "fazzApi": {
+          "id": "",
+          "name": "Fazz account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "contact",
+        "operation": "addNote",
+        "contactId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Triage settings').item.json.contactId }}"
+        },
+        "note": "=AI triage: complaint on WhatsApp, the team was alerted by email. \"{{ $('Triage settings').item.json.messageText }}\""
+      },
+      "id": "a0663c31-18f4-4803-9f74-378fe10fba72",
+      "name": "Note: complaint",
+      "type": "@fazz-ai/n8n-nodes-fazz.fazz",
+      "typeVersion": 1,
+      "position": [
+        1300,
+        380
+      ],
+      "credentials": {
+        "fazzApi": {
+          "id": "",
+          "name": "Fazz account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "4188855a-e012-48ea-a81e-022556828bf0",
+      "name": "No action needed",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1300,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "contact",
+        "operation": "addNote",
+        "contactId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Triage settings').item.json.contactId }}"
+        },
+        "note": "=AI triage could not classify this WhatsApp message, read it in the conversation. \"{{ $('Triage settings').item.json.messageText }}\""
+      },
+      "id": "f52a0b33-d116-4036-a8d6-80cedbcc7911",
+      "name": "Note: not classified",
+      "type": "@fazz-ai/n8n-nodes-fazz.fazz",
+      "typeVersion": 1,
+      "position": [
+        1300,
+        740
+      ],
+      "credentials": {
+        "fazzApi": {
+          "id": "",
+          "name": "Fazz account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $('Triage settings').item.json.fromEmail }}",
+        "toEmail": "={{ $('Triage settings').item.json.alertEmail }}",
+        "subject": "=Complaint on WhatsApp from {{ $('Triage settings').item.json.contactName }}",
+        "emailFormat": "text",
+        "text": "={{ $('Triage settings').item.json.contactName }} ({{ $('Triage settings').item.json.contactPhone }}) wrote on {{ $('Triage settings').item.json.whatsappNumber || 'your WhatsApp number' }}:\n\n\"{{ $('Triage settings').item.json.messageText }}\"\n\nThe AI triage marked it as a complaint. Open the conversation in Fazz to answer.",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "d0f6fc8f-224e-4151-addf-bfe15f4db3e2",
+      "name": "Alert the team by email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1540,
+        380
+      ],
+      "credentials": {
+        "smtp": {
+          "id": "",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Triage incoming WhatsApp messages in Fazz with AI and alert the team about complaints\n\n### How it works\nFor teams that answer customers on WhatsApp through Fazz. Each message a customer sends starts the workflow. An AI model sorts the text into **Sales**, **Support**, **Complaint** or other, and the workflow:\n\n- adds a note to the contact in Fazz for sales and support messages, so the team sees the intent next to the conversation;\n- adds a note and emails the team for complaints;\n- does nothing for greetings and short replies;\n- adds a note asking someone to read the message when the model fails.\n\nFazz retries a delivery that n8n didn't confirm, so the workflow drops any event ID it has already handled. Messages without text (audio, stickers, media without a caption) are skipped. Group messages never reach the workflow.\n\n### Setup\n1. Install the community node `@fazz-ai/n8n-nodes-fazz` (tested with 0.1.3 on n8n 2.46.6). Until n8n verifies it, it needs self-hosted n8n reachable from the internet over `https`.\n2. In Fazz, open **Settings › Integrations › Server API**, create a connection and use its key in the **Fazz API** credential.\n3. Add an OpenAI credential, or replace the model with any chat model. The template was tested with qwen2.5:7b on Ollama.\n4. Add an SMTP credential and set the addresses in **Triage settings**.\n5. Activate: the trigger creates the webhook in Fazz.\n\n### Customization\nEdit the category descriptions, or send complaints to Slack instead of email.",
+        "height": 720,
+        "width": 540
+      },
+      "id": "ac7a7c63-2eb0-4c85-b977-915c5a8ff11c",
+      "name": "Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -600,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Receive each message once\nFazz signs every event; repeated deliveries are dropped by event ID.",
+        "height": 300,
+        "width": 420,
+        "color": 7
+      },
+      "id": "1e9d9c6b-eb94-42ba-a33d-32ec38662664",
+      "name": "Section: receive",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Keep messages with text\nPulls the text, contact and number into simple fields.",
+        "height": 300,
+        "width": 420,
+        "color": 7
+      },
+      "id": "e396c255-13f4-41dd-91d7-6732890938e8",
+      "name": "Section: text",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        420,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Classify with AI\nAny chat model works. Edit the category descriptions to match your business.",
+        "height": 500,
+        "width": 320,
+        "color": 7
+      },
+      "id": "d06716bb-7401-43fd-bb48-d2ae9de4a87a",
+      "name": "Section: classify",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        880,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Act on the category\nNotes appear on the contact in Fazz, visible only to the team.",
+        "height": 1000,
+        "width": 520,
+        "color": 7
+      },
+      "id": "ac8fe9e9-8339-4914-8ac3-05ce37caf83f",
+      "name": "Section: act",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1240,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### Set the alert address\nPut your team's address in **Triage settings** and pick an SMTP credential here.",
+        "height": 170,
+        "width": 230,
+        "color": 3
+      },
+      "id": "eb60820d-0a83-440d-992b-587496ec115f",
+      "name": "Warning: alert address",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1516,
+        190
+      ]
+    }
+  ],
+  "connections": {
+    "New WhatsApp message": {
+      "main": [
+        [
+          {
+            "node": "Ignore repeated deliveries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ignore repeated deliveries": {
+      "main": [
+        [
+          {
+            "node": "Triage settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Triage settings": {
+      "main": [
+        [
+          {
+            "node": "Has text?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has text?": {
+      "main": [
+        [
+          {
+            "node": "Classify the message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Classify the message",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify the message": {
+      "main": [
+        [
+          {
+            "node": "Note: buying signal",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Note: support request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Note: complaint",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No action needed",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Note: not classified",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Note: complaint": {
+      "main": [
+        [
+          {
+            "node": "Alert the team by email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

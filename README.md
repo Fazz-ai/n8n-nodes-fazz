@@ -78,6 +78,16 @@ Fazz only calls public `https` addresses on the default port. If n8n runs on you
 
 ## Example workflows
 
+Ready-to-import templates, tested on n8n 2.46.6, are in [`templates/`](templates/). Each one explains its setup in sticky notes on the canvas.
+
+| Template | What it does |
+| --- | --- |
+| [Lead intake](templates/lead-intake.json) | An n8n form creates or updates the contact in Fazz, greets new leads with an approved template and notes their interest. |
+| [Appointment reminders](templates/appointment-reminders.json) | Every hour, sends a reminder template for appointments in the next 24 hours from an n8n data table and records the result per row. |
+| [Message triage](templates/message-triage.json) | Classifies each incoming message with AI, notes sales and support intent on the contact, and emails the team about complaints. |
+
+Other ideas:
+
 - **Invoice reminder**: a billing system calls an n8n Webhook → **Fazz › Send Template** with the invoice template, the customer phone, the amount as a variable and the PDF as a document header, with **Idempotency Key** `invoice-{{ $json.id }}`.
 - **New lead to CRM**: **Fazz Trigger** on `contact.created` → your CRM node, creating the lead with the contact's name, phone and source.
 - **Customer reply alert**: **Fazz Trigger** on `message.received` → Slack, posting the contact name and the text.
