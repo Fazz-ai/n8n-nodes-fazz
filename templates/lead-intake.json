@@ -1,0 +1,583 @@
+{
+  "name": "Capture website leads in Fazz and greet new ones on WhatsApp",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Talk to our team",
+        "formDescription": "Leave your WhatsApp number and we will message you there.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Full name",
+              "fieldName": "name",
+              "placeholder": "e.g. Maria Silva",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "WhatsApp number",
+              "fieldName": "phone",
+              "placeholder": "e.g. +55 11 98765-4321",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Email",
+              "fieldName": "email",
+              "fieldType": "email",
+              "placeholder": "e.g. maria@example.com"
+            },
+            {
+              "fieldLabel": "What are you interested in?",
+              "fieldName": "interest",
+              "fieldType": "textarea",
+              "placeholder": "e.g. a quote for 20 units"
+            }
+          ]
+        },
+        "options": {
+          "buttonLabel": "Send",
+          "appendAttribution": false
+        }
+      },
+      "id": "07ca3974-2b6a-483f-8deb-fede733e2bbc",
+      "name": "Lead form",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        0,
+        300
+      ],
+      "webhookId": "88eac56b-d234-4008-bfde-575543a13dc6"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a20cbc69-3b0a-4522-9cf0-413f14e5e550",
+              "name": "leadSource",
+              "value": "Website form",
+              "type": "string"
+            },
+            {
+              "id": "44ab738b-253b-4bd5-95d6-16f3a1171d1c",
+              "name": "defaultCountryCode",
+              "value": "55",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "93f86823-98cf-4f42-97c8-3160a5a82bc0",
+      "name": "Lead settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Turns the typed number into + and digits with a country code, the format Fazz accepts.\n// A number typed with \"+\" keeps its own country code; one without gets the default.\nreturn $input.all().map((item) => {\n  const lead = item.json;\n  const typed = String(lead.phone ?? '').trim();\n  let digits = typed.replace(/\\D/g, '');\n  if (!typed.startsWith('+') && digits.length <= 11) {\n    digits = String(lead.defaultCountryCode ?? '').replace(/\\D/g, '') + digits.replace(/^0+/, '');\n  }\n  const name = String(lead.name ?? '').trim().replace(/\\s+/g, ' ');\n\n  return {\n    json: {\n      ...lead,\n      name,\n      firstName: name.split(' ')[0] || name,\n      email: String(lead.email ?? '').trim().toLowerCase(),\n      interest: String(lead.interest ?? '').trim(),\n      phoneTyped: typed,\n      phone: `+${digits}`,\n      phoneValid: digits.length >= 10 && digits.length <= 15,\n    },\n  };\n});"
+      },
+      "id": "bc867361-5f66-4891-9753-44bc32b5fdef",
+      "name": "Clean up phone number",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "019f147b-bc63-4ad6-81ab-4a6b91378b39",
+              "leftValue": "={{ $json.phoneValid }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "652681b0-573f-4ee1-8306-88c3dfd8bcc6",
+      "name": "Phone number valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        660,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "completionTitle": "Check your WhatsApp number",
+        "completionMessage": "=We couldn't read \"{{ $json.phoneTyped }}\" as a WhatsApp number. Go back and type it with the area code, for example +55 11 98765-4321.",
+        "options": {}
+      },
+      "id": "de88e70b-cb7e-4dd0-8abd-68bd122d4e13",
+      "name": "Ask for a valid number",
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.5,
+      "position": [
+        900,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "contact",
+        "operation": "upsert",
+        "phone": "={{ $json.phone }}",
+        "additionalFields": {
+          "name": "={{ $json.name }}",
+          "email": "={{ $json.email }}",
+          "source": "={{ $json.leadSource }}"
+        }
+      },
+      "id": "3340d2ed-f43f-4f2d-bd75-b63d30a29dbc",
+      "name": "Create or update contact",
+      "type": "@fazz-ai/n8n-nodes-fazz.fazz",
+      "typeVersion": 1,
+      "position": [
+        900,
+        300
+      ],
+      "credentials": {
+        "fazzApi": {
+          "id": "",
+          "name": "Fazz account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "4138ae40-a02a-45c1-a808-bd1e12eb4b6b",
+              "leftValue": "={{ $json.created }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c87bb9ad-c604-4ecc-8cd6-c3ecf028f61d",
+      "name": "New contact?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1120,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendTemplate",
+        "sendTo": "contact",
+        "contactId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.id }}"
+        },
+        "whatsappNumberId": "",
+        "templateId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "variables": {
+          "variable": [
+            {
+              "value": "={{ $('Clean up phone number').item.json.firstName }}"
+            }
+          ]
+        },
+        "additionalFields": {},
+        "options": {
+          "idempotencyKey": "=lead-welcome-{{ $('Clean up phone number').item.json.phone }}"
+        }
+      },
+      "id": "ab0266ad-c611-44d7-9779-e61c0719c9a2",
+      "name": "Send welcome template",
+      "type": "@fazz-ai/n8n-nodes-fazz.fazz",
+      "typeVersion": 1,
+      "position": [
+        1360,
+        200
+      ],
+      "credentials": {
+        "fazzApi": {
+          "id": "",
+          "name": "Fazz account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "resource": "contact",
+        "operation": "addNote",
+        "contactId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Create or update contact').item.json.id }}"
+        },
+        "note": "=New lead from the {{ $('Clean up phone number').item.json.leadSource }}. Interest: {{ $('Clean up phone number').item.json.interest || 'not given' }}. Welcome message sent on WhatsApp."
+      },
+      "id": "868d59f0-ef79-49e6-afd2-68e52ef0d774",
+      "name": "Note: welcome sent",
+      "type": "@fazz-ai/n8n-nodes-fazz.fazz",
+      "typeVersion": 1,
+      "position": [
+        1600,
+        100
+      ],
+      "credentials": {
+        "fazzApi": {
+          "id": "",
+          "name": "Fazz account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "contact",
+        "operation": "addNote",
+        "contactId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Create or update contact').item.json.id }}"
+        },
+        "note": "=New lead from the {{ $('Clean up phone number').item.json.leadSource }}. Interest: {{ $('Clean up phone number').item.json.interest || 'not given' }}. The welcome message was not sent: {{ $json.error }}. Reach out by hand."
+      },
+      "id": "d41aab64-9e4c-4d8a-a072-455f48c1af90",
+      "name": "Note: welcome not sent",
+      "type": "@fazz-ai/n8n-nodes-fazz.fazz",
+      "typeVersion": 1,
+      "position": [
+        1600,
+        300
+      ],
+      "credentials": {
+        "fazzApi": {
+          "id": "",
+          "name": "Fazz account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "contact",
+        "operation": "addNote",
+        "contactId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Create or update contact').item.json.id }}"
+        },
+        "note": "=Filled the {{ $('Clean up phone number').item.json.leadSource }} again. Interest: {{ $('Clean up phone number').item.json.interest || 'not given' }}. No automatic message: this contact was already in Fazz."
+      },
+      "id": "78c69ce7-0154-47e6-9cf5-3c910f32e4a8",
+      "name": "Note: returning lead",
+      "type": "@fazz-ai/n8n-nodes-fazz.fazz",
+      "typeVersion": 1,
+      "position": [
+        1360,
+        420
+      ],
+      "credentials": {
+        "fazzApi": {
+          "id": "",
+          "name": "Fazz account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "completionTitle": "=Thanks, {{ $('Clean up phone number').item.json.firstName }}!",
+        "completionMessage": "Our team will talk to you on WhatsApp.",
+        "options": {}
+      },
+      "id": "473ef797-ddb6-4168-a3d7-55db252a2e2c",
+      "name": "Thank you page",
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.5,
+      "position": [
+        1840,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "completionTitle": "We couldn't save your details",
+        "completionMessage": "Check the WhatsApp number and send the form again. If it still doesn't go through, try again in a few minutes.",
+        "options": {}
+      },
+      "id": "19de2149-2d6b-4a57-8174-5472fed0a4d1",
+      "name": "Contact not saved page",
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.5,
+      "position": [
+        1120,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Capture website leads in Fazz and greet new ones on WhatsApp\n\n### How it works\nA visitor fills in an n8n form with their name, WhatsApp number, email and interest. The workflow turns the number into international format, then creates the contact in Fazz or updates the one that already has that number.\n\n- **New contact:** sends your approved welcome template with the visitor's first name and adds a note with their interest.\n- **Existing contact:** adds a note only, so a repeat submission never messages the same person twice.\n- **Welcome not sent** (for example, the template isn't approved for that number): adds a note asking the team to reach out by hand.\n\nThe visitor then sees a thank-you page, or a page asking them to check the number.\n\n### Setup\n1. Install the community node `@fazz-ai/n8n-nodes-fazz` (tested with 0.1.3 on n8n 2.46.6). Until n8n verifies it, it needs self-hosted n8n.\n2. In Fazz, open **Settings › Integrations › Server API**, create a connection and paste its key into a **Fazz API** credential.\n3. In **Send welcome template**, pick your WhatsApp number and a welcome template with one body variable (the first name).\n4. In **Lead settings**, set the lead source name and your default country code.\n5. Activate the workflow and share the form's production URL.\n\n### Customization\nAdd form fields and include them in the notes, or route new leads to a department in the send node's additional fields.",
+        "height": 700,
+        "width": 500
+      },
+      "id": "5ae8dd09-b879-40b4-bfea-dddec53d286a",
+      "name": "Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Collect and check the lead\nCleans the name and email, adds your country code to numbers typed without one, and checks the number's length.",
+        "height": 300,
+        "width": 820,
+        "color": 7
+      },
+      "id": "5493526e-870f-4a7f-aa1e-346913bffb7b",
+      "name": "Section: collect",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Save the contact\nCreates the contact, or updates the one with the same number. Invalid or refused numbers end on a page asking the visitor to try again.",
+        "height": 560,
+        "width": 400,
+        "color": 7
+      },
+      "id": "1505d538-777d-4978-8f82-c971f8941784",
+      "name": "Section: save",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        860,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Greet new leads, log returning ones\nOnly new contacts get the welcome message. Every path leaves a note on the contact for the team.",
+        "height": 740,
+        "width": 440,
+        "color": 7
+      },
+      "id": "c4c3ada3-a2ab-4a32-865e-2f7e2fbd3254",
+      "name": "Section: greet",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1320,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### Pick before activating\nChoose your WhatsApp number and welcome template here. The template goes to every new lead.",
+        "height": 150,
+        "width": 230,
+        "color": 3
+      },
+      "id": "8cde4836-0498-45b3-a945-486800571505",
+      "name": "Warning: pick number and template",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1336,
+        30
+      ]
+    }
+  ],
+  "connections": {
+    "Lead form": {
+      "main": [
+        [
+          {
+            "node": "Lead settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lead settings": {
+      "main": [
+        [
+          {
+            "node": "Clean up phone number",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean up phone number": {
+      "main": [
+        [
+          {
+            "node": "Phone number valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Phone number valid?": {
+      "main": [
+        [
+          {
+            "node": "Create or update contact",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ask for a valid number",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create or update contact": {
+      "main": [
+        [
+          {
+            "node": "New contact?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Contact not saved page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "New contact?": {
+      "main": [
+        [
+          {
+            "node": "Send welcome template",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Note: returning lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send welcome template": {
+      "main": [
+        [
+          {
+            "node": "Note: welcome sent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Note: welcome not sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Note: welcome sent": {
+      "main": [
+        [
+          {
+            "node": "Thank you page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Note: welcome not sent": {
+      "main": [
+        [
+          {
+            "node": "Thank you page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Note: returning lead": {
+      "main": [
+        [
+          {
+            "node": "Thank you page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

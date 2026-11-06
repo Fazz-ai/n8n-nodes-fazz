@@ -49,7 +49,7 @@ Every send carries an idempotency key. By default it is made of the execution, t
 
 ### When Fazz refuses
 
-A refusal becomes an n8n error with the API message and its stable code in brackets, for example `[window_closed]`, plus how to solve it. With **On Error › Continue**, the item comes out as `{ "error": "…", "code": "window_closed" }`, so the next node can branch on `code`. The codes are listed in the [API reference](https://app.fazz.ia.br/docs/api/reference).
+A refusal becomes an n8n error with the API message and its stable code in brackets, for example `[window_closed]`, plus how to solve it. With **On Error › Continue**, the item comes out as `{ "error": "…", "code": "window_closed" }`, so the next node can branch on `code`. With **On Error › Continue (using error output)**, it leaves through the node's error output instead. The codes are listed in the [API reference](https://app.fazz.ia.br/docs/api/reference).
 
 ## Fazz Trigger
 

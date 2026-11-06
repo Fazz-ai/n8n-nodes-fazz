@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.3
+
+- Fazz node: with On Error › Continue (using error output), a refused call now leaves through the error output. It used to come out of the success output.
+
 ## 0.1.2
 
 - Contact > Get Many: 'Search' moved into the 'Filters' collection. Workflows that used it need the search set again under Filters.

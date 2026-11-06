@@ -210,8 +210,10 @@ export class Fazz implements INodeType {
 						: new NodeOperationError(node, error as Error, { itemIndex });
 
 				if (this.continueOnFail()) {
+					// `error` on the item sends it to the error output when the node is set to continue with it.
 					returnData.push({
 						json: { error: failure.message, ...codeOf(failure) },
+						error: failure,
 						pairedItem: { item: itemIndex },
 					});
 					continue;
