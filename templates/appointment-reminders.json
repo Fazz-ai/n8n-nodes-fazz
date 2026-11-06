@@ -1,0 +1,573 @@
+{
+  "name": "Send WhatsApp appointment reminders from an n8n data table with Fazz",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "432e3fc7-563c-41d8-a82a-993709f55933",
+      "name": "Every hour",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9ad9ea82-eb3f-4c29-8a16-2a05fad27b5e",
+              "name": "hoursAhead",
+              "value": 24,
+              "type": "number"
+            },
+            {
+              "id": "c5c2ef24-15db-47f2-8f5c-3f4beff59a9d",
+              "name": "defaultCountryCode",
+              "value": "55",
+              "type": "string"
+            },
+            {
+              "id": "516b563b-ef9b-43ba-863c-b832c7452b04",
+              "name": "contactSource",
+              "value": "Appointment reminders",
+              "type": "string"
+            },
+            {
+              "id": "3e2b8dca-a8c3-4c0a-938d-6f04fb691211",
+              "name": "dateFormat",
+              "value": "dd/MM/yyyy 'at' HH:mm",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "18432e52-0830-4d86-a4f1-86a61a593b7b",
+      "name": "Reminder settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "reminder_status",
+              "condition": "isEmpty"
+            }
+          ]
+        },
+        "returnAll": true
+      },
+      "id": "b6739652-c80d-4a74-ae48-63e5d55620bd",
+      "name": "Get rows without a reminder",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        440,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "fef68472-f7bb-4046-85fb-bbc80f3fac9d",
+              "leftValue": "={{ $json.appointment_at }}",
+              "rightValue": "={{ $now }}",
+              "operator": {
+                "type": "dateTime",
+                "operation": "after"
+              }
+            },
+            {
+              "id": "ceefe7af-7eb8-4e71-87a9-5ff717b0238f",
+              "leftValue": "={{ $json.appointment_at }}",
+              "rightValue": "={{ $now.plus({ hours: $('Reminder settings').first().json.hoursAhead }) }}",
+              "operator": {
+                "type": "dateTime",
+                "operation": "before"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "0327af34-a53a-41ce-a112-c32f83856659",
+      "name": "Appointment within the window?",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        660,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepares each row for the template: the number in international format and the date as the customer reads it.\nconst settings = $('Reminder settings').first().json;\n\nreturn $input.all().map((item) => {\n  const row = item.json;\n  const typed = String(row.phone ?? '').trim();\n  let digits = typed.replace(/\\D/g, '');\n  if (!typed.startsWith('+') && digits.length <= 11) {\n    digits = String(settings.defaultCountryCode ?? '').replace(/\\D/g, '') + digits.replace(/^0+/, '');\n  }\n  const name = String(row.customer_name ?? '').trim();\n\n  return {\n    json: {\n      ...row,\n      firstName: name.split(/\\s+/)[0] || name,\n      phoneTyped: typed,\n      phone: `+${digits}`,\n      phoneValid: digits.length >= 10 && digits.length <= 15,\n      appointmentText: DateTime.fromISO(String(row.appointment_at)).toFormat(settings.dateFormat),\n    },\n  };\n});"
+      },
+      "id": "13f7c804-6cf4-45bc-b2d0-a6d5790c4a43",
+      "name": "Prepare message data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "d9343dc2-1024-4322-9261-51c51938d788",
+              "leftValue": "={{ $json.phoneValid }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "40478e1a-d820-4b68-9edf-9ac983aa117c",
+      "name": "Phone number valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1120,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendTemplate",
+        "sendTo": "phone",
+        "to": "={{ $json.phone }}",
+        "whatsappNumberId": "",
+        "templateId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "variables": {
+          "variable": [
+            {
+              "value": "={{ $json.firstName }}"
+            },
+            {
+              "value": "={{ $json.service }}"
+            },
+            {
+              "value": "={{ $json.appointmentText }}"
+            }
+          ]
+        },
+        "additionalFields": {
+          "contactName": "={{ $json.customer_name }}",
+          "contactSource": "={{ $('Reminder settings').first().json.contactSource }}"
+        },
+        "options": {
+          "idempotencyKey": "=appointment-reminder-{{ $json.id }}-{{ $json.appointment_at }}"
+        }
+      },
+      "id": "3030217c-56ac-4e74-b2a1-a81518d458eb",
+      "name": "Send reminder template",
+      "type": "@fazz-ai/n8n-nodes-fazz.fazz",
+      "typeVersion": 1,
+      "position": [
+        1380,
+        200
+      ],
+      "credentials": {
+        "fazzApi": {
+          "id": "",
+          "name": "Fazz account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $('Prepare message data').item.json.id }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "reminder_status": "sent",
+            "reminder_sent_at": "={{ $now.toISO() }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "reminder_status",
+              "displayName": "reminder_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "reminder_sent_at",
+              "displayName": "reminder_sent_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "f4f72396-5f7a-434d-895f-ac8224a354d7",
+      "name": "Mark reminder sent",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1640,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $('Prepare message data').item.json.id }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "reminder_status": "=failed: {{ $json.error }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "reminder_status",
+              "displayName": "reminder_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "52780fbe-d2cf-455d-9173-13d765181e6b",
+      "name": "Mark reminder failed",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1640,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.id }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "reminder_status": "=invalid number: {{ $json.phoneTyped }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "reminder_status",
+              "displayName": "reminder_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "476d3cd9-d0a5-4b5b-9a5e-28e9189146e0",
+      "name": "Mark invalid number",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1380,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Send WhatsApp appointment reminders from an n8n data table with Fazz\n\n### How it works\nFor teams that book appointments and want fewer no-shows. Every hour the workflow reads the rows of an n8n data table that have no reminder yet, keeps the appointments due in the next 24 hours, and sends each customer your approved reminder template through Fazz with their first name, the service and the date.\n\nEach row records the result in `reminder_status`: `sent` with the time, `invalid number`, or `failed` with the reason Fazz gave. A row with a status is never picked again, and the idempotency key also stops a second message if the same row is processed twice. Appointments already in the past are skipped.\n\n### Setup\n1. Install the community node `@fazz-ai/n8n-nodes-fazz` (tested with 0.1.3 on n8n 2.46.6). Until n8n verifies it, it needs self-hosted n8n.\n2. Create a data table with the columns `customer_name`, `phone`, `service` (text), `appointment_at` (date), `reminder_status` (text) and `reminder_sent_at` (date), and pick it in the four data table nodes.\n3. In Fazz, open **Settings › Integrations › Server API**, create a connection and paste its key into a **Fazz API** credential.\n4. In **Send reminder template**, pick your WhatsApp number and a template with three body variables: first name, service, date.\n5. Adjust **Reminder settings** and activate.\n\n### Customization\nChange `hoursAhead` for an earlier reminder, or `dateFormat` for your locale. To retry failed rows, clear their status.",
+        "height": 680,
+        "width": 500
+      },
+      "id": "c213cd98-4837-4366-838b-490f58eb06b9",
+      "name": "Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Find appointments to remind\nRows without a status whose appointment is between now and `hoursAhead` from now.",
+        "height": 300,
+        "width": 860,
+        "color": 7
+      },
+      "id": "313d962d-fe09-44e2-9900-7c1507dc6b84",
+      "name": "Section: find",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Prepare the message\nPuts the number in international format and the date in the workflow's time zone.",
+        "height": 300,
+        "width": 400,
+        "color": 7
+      },
+      "id": "5af7ccae-c82e-40a5-8f32-5636b765c971",
+      "name": "Section: prepare",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        860,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Send and record the result\nEvery row ends with a status, so it is never sent twice.",
+        "height": 780,
+        "width": 520,
+        "color": 7
+      },
+      "id": "3ca28a9e-e012-4344-b1bd-855d1ffb3f7e",
+      "name": "Section: send",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1320,
+        -140
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### Pick before activating\nChoose your WhatsApp number and reminder template here.",
+        "height": 150,
+        "width": 230,
+        "color": 3
+      },
+      "id": "0766bb4d-912f-4aac-bc50-e66467799ee8",
+      "name": "Warning: pick number and template",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1356,
+        30
+      ]
+    }
+  ],
+  "connections": {
+    "Every hour": {
+      "main": [
+        [
+          {
+            "node": "Reminder settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reminder settings": {
+      "main": [
+        [
+          {
+            "node": "Get rows without a reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get rows without a reminder": {
+      "main": [
+        [
+          {
+            "node": "Appointment within the window?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Appointment within the window?": {
+      "main": [
+        [
+          {
+            "node": "Prepare message data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare message data": {
+      "main": [
+        [
+          {
+            "node": "Phone number valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Phone number valid?": {
+      "main": [
+        [
+          {
+            "node": "Send reminder template",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark invalid number",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send reminder template": {
+      "main": [
+        [
+          {
+            "node": "Mark reminder sent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark reminder failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}
