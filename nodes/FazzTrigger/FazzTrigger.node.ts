@@ -59,13 +59,6 @@ export class FazzTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName:
-					'Fazz only calls public https addresses. If n8n runs on your computer or on a private network, set its WEBHOOK_URL to a public https address (a tunnel works) before activating.',
-				name: 'publicUrlNotice',
-				type: 'notice',
-				default: '',
-			},
-			{
 				displayName: 'Event Names or IDs',
 				name: 'events',
 				type: 'multiOptions',

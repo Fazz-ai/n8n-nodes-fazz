@@ -1,6 +1,6 @@
 {
   "name": "@fazz-ai/n8n-nodes-fazz",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "n8n nodes for Fazz: send WhatsApp templates, text and media, manage contacts, and start workflows from Fazz events.",
   "license": "MIT",
   "homepage": "https://github.com/Fazz-ai/n8n-nodes-fazz#readme",

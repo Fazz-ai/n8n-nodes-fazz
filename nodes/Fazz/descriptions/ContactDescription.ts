@@ -276,15 +276,6 @@ export const contactFields: INodeProperties[] = [
 
 	/* getAll */
 	{
-		displayName: 'Search',
-		name: 'query',
-		type: 'string',
-		default: '',
-		placeholder: 'e.g. Maria',
-		description: 'Part of the name, email or phone. Leave empty to list every contact.',
-		displayOptions: show(['getAll']),
-	},
-	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
@@ -300,5 +291,23 @@ export const contactFields: INodeProperties[] = [
 		default: 50,
 		description: 'Max number of results to return',
 		displayOptions: { show: { resource: ['contact'], operation: ['getAll'], returnAll: [false] } },
+	},
+	{
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'collection',
+		placeholder: 'Add Filter',
+		default: {},
+		displayOptions: show(['getAll']),
+		options: [
+			{
+				displayName: 'Search',
+				name: 'query',
+				type: 'string',
+				default: '',
+				placeholder: 'e.g. Maria',
+				description: 'Part of the name, email or phone',
+			},
+		],
 	},
 ];

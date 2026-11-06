@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.2
+
+- Contact > Get Many: 'Search' moved into the 'Filters' collection. Workflows that used it need the search set again under Filters.
+- Fazz Trigger: the public address notice left the node; the README covers it, and activation explains it if Fazz can't reach n8n.
+
 ## 0.1.1
 
 - Package author is now Fazz (contato@fazz.ia.br).

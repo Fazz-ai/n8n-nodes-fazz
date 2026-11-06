@@ -232,7 +232,8 @@ function codeOf(error: unknown): IDataObject {
 }
 
 async function getManyContacts(this: IExecuteFunctions, itemIndex: number): Promise<IDataObject[]> {
-	const query = String(this.getNodeParameter('query', itemIndex, '')).trim();
+	const filters = this.getNodeParameter('filters', itemIndex, {}) as IDataObject;
+	const query = String(filters.query ?? '').trim();
 	const returnAll = this.getNodeParameter('returnAll', itemIndex, false) as boolean;
 	const limit = returnAll ? Infinity : (this.getNodeParameter('limit', itemIndex, 50) as number);
 	const contacts: IDataObject[] = [];
